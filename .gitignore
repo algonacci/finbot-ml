@@ -10,6 +10,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
+.ruff_cache
 dist/
 downloads/
 eggs/
