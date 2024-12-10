@@ -10,6 +10,8 @@ from config import CONFIG
 from errors import bp as errors_bp
 from index import bp as index_bp
 from ticker import bp as ticker_bp
+from chat import bp as chat_bp
+
 
 
 def create_app():
@@ -27,7 +29,8 @@ def create_app():
     api.register_blueprint(index_bp)
     api.register_blueprint(errors_bp)
     api.register_blueprint(ticker_bp)
-
+    api.register_blueprint(chat_bp)
+    
     init_cache_app(app)
     init_rate_limiter(app)
 
