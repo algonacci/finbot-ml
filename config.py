@@ -1,3 +1,4 @@
+import os
 from dotenv import dotenv_values
 
 config = dotenv_values(".env")
@@ -10,7 +11,7 @@ CONFIG = {
     "OPENAPI_URL_PREFIX": "/",
     "OPENAPI_SWAGGER_UI_PATH": "/docs",
     "OPENAPI_SWAGGER_UI_URL": "https://cdn.jsdelivr.net/npm/swagger-ui-dist/",
-    "SECRET_KEY": config["SECRET_KEY"],
+    "SECRET_KEY": os.getenv("SECRET_KEY"),
     "API_SPEC_OPTIONS": {
         "security": [{"bearerAuth": []}],
         "components": {
