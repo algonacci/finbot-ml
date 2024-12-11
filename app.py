@@ -20,8 +20,8 @@ def create_app():
     CORS(
         app,
         resources={
-            r"/*": {"origins": ["http://localhost:5173"]},
-            r"/static/*": {"origins": ["http://localhost:5173"]}
+            r"/*": {"origins": ["http://localhost:5173", "https://finbot-fe.vercel.app/"]},
+            r"/static/*": {"origins": ["http://localhost:5173", "https://finbot-fe.vercel.app/"]}
         },
     )
     api = Api(app)
@@ -30,7 +30,7 @@ def create_app():
     api.register_blueprint(errors_bp)
     api.register_blueprint(ticker_bp)
     api.register_blueprint(chat_bp)
-    
+
     init_cache_app(app)
     init_rate_limiter(app)
 
