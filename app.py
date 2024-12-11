@@ -20,15 +20,17 @@ def create_app():
         app,
         resources={
             r"/*": {
-                "origins": ["http://localhost:5173", "https://finbot-fe.vercel.app"]
-            },
-            r"/static/*": {
-                "origins": ["http://localhost:5173", "https://finbot-fe.vercel.app"]
-            },
+                "origins": ["http://localhost:5173", "https://finbot-fe.vercel.app"],
+                # Tambahkan cache untuk preflight request
+                "max_age": 3600,  # Cache selama 1 jam
+                # Specific allowed methods
+                "methods": ["GET", "POST"],
+                # Specific allowed headers
+                "allow_headers": ["Content-Type", "Authorization"],
+                # Allow credentials if needed
+                "supports_credentials": True,
+            }
         },
-        supports_credentials=True,
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
     )
     api = Api(app)
 
