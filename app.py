@@ -13,16 +13,22 @@ from ticker import bp as ticker_bp
 from chat import bp as chat_bp
 
 
-
 def create_app():
-    app = Flask(__name__, static_folder='static')
+    app = Flask(__name__, static_folder="static")
     app.config.update(CONFIG)
     CORS(
         app,
         resources={
-            r"/*": {"origins": ["http://localhost:5173", "https://finbot-fe.vercel.app/"]},
-            r"/static/*": {"origins": ["http://localhost:5173", "https://finbot-fe.vercel.app/"]}
+            r"/*": {
+                "origins": ["http://localhost:5173", "https://finbot-fe.vercel.app"]
+            },
+            r"/static/*": {
+                "origins": ["http://localhost:5173", "https://finbot-fe.vercel.app"]
+            },
         },
+        supports_credentials=True,
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
     )
     api = Api(app)
 
