@@ -10,6 +10,11 @@ from langchain_core.chat_history import (
 )
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_openai import ChatOpenAI
+from langchain_helper import classify_template, format_search_results
+# from langchain_community.tools import TavilySearchResults
+from tavily import TavilyClient
+from langchain_core.prompts import ChatPromptTemplate
+
 
 bp = Blueprint("chat", "items", description="Operations on ticker endpoint")
 
@@ -30,6 +35,9 @@ model = ChatOpenAI(model="gpt-4-1106-preview", temperature=0, max_tokens=1000)
 
 # Create runnable with message history
 with_message_history = RunnableWithMessageHistory(model, get_session_history)
+
+tavily_client = TavilyClient()
+
 
 
 @bp.route("/get_ticker_data", methods=["GET"])
@@ -183,40 +191,90 @@ def chat():
                 }
             ), 400
 
-        # Format the analysis for the chat context
-        analysis = format_analysis_for_chat(ticker_data["data"])
+        classification = classify_template(messages)
 
-        # Prepare context
-        context = f"""
-        You are a helpful financial analyst. You are analyzing stock data for {ticker_data['tickers']}.
-        
-        Here is the current analysis:
-        {analysis}
-        
-        Previous conversation context is maintained automatically.
-        Please provide insights based on the user's question, using the data provided.
-        If any data is missing or invalid, acknowledge this and work with the available information.
-        """
+        if classification == "Finance Metrics":
+            # Format the analysis for the chat context
+            analysis = format_analysis_for_chat(ticker_data["data"])
 
-        # Get AI response
-        ai_response = with_message_history.invoke(
-            {"input": f"{context}\n\nUser: {messages[-1]}"},
-            config={"configurable": {"session_id": session_id}},
-        )
+            # Prepare context
+            context = f"""
+            You are a helpful financial analyst. You are analyzing stock data for {ticker_data['tickers']}.
+            
+            Here is the current analysis:
+            {analysis}
+            
+            Previous conversation context is maintained automatically.
+            Please provide insights based on the user's question, using the data provided.
+            If any data is missing or invalid, acknowledge this and work with the available information.
+            """
 
-        response_content = (
-            ai_response.content if hasattr(ai_response, "content") else str(ai_response)
-        )
+            # Get AI response
+            ai_response = with_message_history.invoke(
+                {"input": f"{context}\n\nUser: {messages[-1]}"},
+                config={"configurable": {"session_id": session_id}},
+            )
 
-        return jsonify(
-            {
-                "status": {"code": 200, "message": "Success"},
-                "data": {
-                    "response": response_content,
-                    "stock_data": ticker_data["data"],
-                },
-            }
-        ), 200
+            response_content = (
+                ai_response.content
+                if hasattr(ai_response, "content")
+                else str(ai_response)
+            )
+
+            return jsonify(
+                {
+                    "status": {"code": 200, "message": "Success"},
+                    "data": {
+                        "response": response_content,
+                        "stock_data": ticker_data["data"],
+                    },
+                }
+            ), 200
+
+        elif classification == "General Info":
+            # 1. Jalankan pencarian via Tavily
+            answer = tavily_client.qna_search(query=messages[-1])
+
+            # 2. Bangun template
+            general_info_template = ChatPromptTemplate.from_messages([
+                (
+                    "system",
+                    "You are a financial expert answering questions about {ticker}. "
+                    "Answer based only on the provided search results."
+                ),
+                ("system", "Search results:\n{info}"),
+                ("user", "{question}"),
+            ])
+
+            # 3. Format isi template menjadi list BaseMessage
+            formatted_messages = general_info_template.format_messages(
+                ticker=ticker_data["tickers"],
+                info=answer,                # ini string hasil "search" yang mau ditampilkan
+                question=messages[-1],      # pertanyaan terakhir user
+            )
+
+            # 4. Lakukan pemanggilan ke model
+            #    Pastikan kita panggil with_message_history langsung dengan list of messages
+            ai_response = with_message_history.invoke(
+                formatted_messages,
+                config={"configurable": {"session_id": session_id}},
+            )
+
+            # 5. Ambil teks final dari AI
+            response_content = (
+                ai_response.content if hasattr(ai_response, "content") else str(ai_response)
+            )
+
+            return jsonify(
+                {
+                    "status": {"code": 200, "message": "Success"},
+                    "data": {
+                        "response": response_content,
+                        "stock_data": ticker_data["data"],
+                    },
+                }
+            ), 200
+
 
     except Exception as e:
         print(f"\n=== ERROR IN CHAT ===")
