@@ -6,6 +6,7 @@ from rate_limiter import limiter
 import yfinance as yf
 import os
 import matplotlib
+from helpers import get_youtube_videos
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -69,6 +70,10 @@ def ticker():
             plt.savefig(image_path)
             plt.close()
 
+            videos = get_youtube_videos(
+                stock_info.get("longName", stock_info.get("shortName", ticker)),
+            )
+
             # Prepare response with more flexible field handling
             response = {
                 "status": {
@@ -112,6 +117,7 @@ def ticker():
                     .reset_index()
                     .to_dict(orient="records"),
                 },
+                "videos": videos,
             }
 
             return jsonify(response), 200

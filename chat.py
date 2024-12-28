@@ -10,7 +10,8 @@ from langchain_core.chat_history import (
 )
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_openai import ChatOpenAI
-from langchain_helper import classify_template, format_search_results
+from langchain_helper import classify_template
+
 # from langchain_community.tools import TavilySearchResults
 from tavily import TavilyClient
 from langchain_core.prompts import ChatPromptTemplate
@@ -37,7 +38,6 @@ model = ChatOpenAI(model="gpt-4-1106-preview", temperature=0, max_tokens=1000)
 with_message_history = RunnableWithMessageHistory(model, get_session_history)
 
 tavily_client = TavilyClient()
-
 
 
 @bp.route("/get_ticker_data", methods=["GET"])
@@ -236,21 +236,23 @@ def chat():
             answer = tavily_client.qna_search(query=messages[-1])
 
             # 2. Bangun template
-            general_info_template = ChatPromptTemplate.from_messages([
-                (
-                    "system",
-                    "You are a financial expert answering questions about {ticker}. "
-                    "Answer based only on the provided search results."
-                ),
-                ("system", "Search results:\n{info}"),
-                ("user", "{question}"),
-            ])
+            general_info_template = ChatPromptTemplate.from_messages(
+                [
+                    (
+                        "system",
+                        "You are a financial expert answering questions about {ticker}. "
+                        "Answer based only on the provided search results.",
+                    ),
+                    ("system", "Search results:\n{info}"),
+                    ("user", "{question}"),
+                ]
+            )
 
             # 3. Format isi template menjadi list BaseMessage
             formatted_messages = general_info_template.format_messages(
                 ticker=ticker_data["tickers"],
-                info=answer,                # ini string hasil "search" yang mau ditampilkan
-                question=messages[-1],      # pertanyaan terakhir user
+                info=answer,  # ini string hasil "search" yang mau ditampilkan
+                question=messages[-1],  # pertanyaan terakhir user
             )
 
             # 4. Lakukan pemanggilan ke model
@@ -262,7 +264,9 @@ def chat():
 
             # 5. Ambil teks final dari AI
             response_content = (
-                ai_response.content if hasattr(ai_response, "content") else str(ai_response)
+                ai_response.content
+                if hasattr(ai_response, "content")
+                else str(ai_response)
             )
 
             return jsonify(
@@ -274,7 +278,6 @@ def chat():
                     },
                 }
             ), 200
-
 
     except Exception as e:
         print(f"\n=== ERROR IN CHAT ===")

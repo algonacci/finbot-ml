@@ -58,7 +58,6 @@ def classify_template(message):
         """
     )
 
-
     classification_chain = (
         classification_template
         | ChatOpenAI(model="gpt-3.5-turbo", temperature=0)

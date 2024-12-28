@@ -325,3 +325,42 @@ Stock Analysis for {data['symbol']}:
 - Volumes: {data['historical_data']['volumes']}
 """
     return analysis
+
+
+from googleapiclient.discovery import build
+import os
+
+
+def get_youtube_videos(tickers):
+    # Get the YouTube API key from the environment variables
+    api_key = os.getenv("YOUTUBE_API_KEY")
+
+    youtube = build("youtube", "v3", developerKey=api_key)
+
+    if not tickers:
+        raise ValueError("No search keyword provided.")
+
+    # Search for videos using the provided keyword
+    request_search = youtube.search().list(
+        part="snippet",
+        q=tickers,
+        type="video",
+        maxResults=6,
+    )
+
+    response_search = request_search.execute()
+
+    videos = []
+    for item in response_search.get("items", []):
+        video_title = item["snippet"]["title"]
+        video_thumbnail = item["snippet"]["thumbnails"]["medium"]["url"]
+        video_id = item["id"]["videoId"]
+        videos.append(
+            {
+                "title": video_title,
+                "thumbnail": video_thumbnail,
+                "id": video_id,
+            }
+        )
+
+    return videos
