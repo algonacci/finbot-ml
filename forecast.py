@@ -101,7 +101,7 @@ def prophet_forecast(train_data, test_data, future_days):
     n_changepoints=5,           # default 25, coba turunkan
     seasonality_mode='additive',
     )
-    model.fit(train_prophet)
+    model.fit(train_prophet, algorithm='lbfgs')
 
 
     # Create future dataframe
