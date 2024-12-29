@@ -5,5 +5,7 @@ google_news = GNews(
     country="ID",
     max_results=10,
 )
-news = google_news.get_news("BREN")
-print(news)
+
+def get_news(ticker):
+    news = google_news.get_news(ticker)
+    return news

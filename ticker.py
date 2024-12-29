@@ -7,6 +7,7 @@ import yfinance as yf
 import os
 import matplotlib
 from helpers import get_youtube_videos
+from news import get_news
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -73,6 +74,10 @@ def ticker():
             videos = get_youtube_videos(
                 stock_info.get("longName", stock_info.get("shortName", ticker)),
             )
+            
+            news = get_news(
+                stock_info.get("longName", stock_info.get("shortName", ticker)),
+            )
 
             # Prepare response with more flexible field handling
             response = {
@@ -118,6 +123,7 @@ def ticker():
                     .to_dict(orient="records"),
                 },
                 "videos": videos,
+                "news": news,
             }
 
             return jsonify(response), 200
