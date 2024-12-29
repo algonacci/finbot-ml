@@ -6,6 +6,7 @@ google_news = GNews(
     max_results=10,
 )
 
+
 def get_news(ticker):
     news = google_news.get_news(ticker)
     return news

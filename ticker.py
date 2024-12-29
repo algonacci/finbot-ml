@@ -8,12 +8,18 @@ import os
 import matplotlib
 from helpers import get_youtube_videos
 from news import get_news
+import pandas as pd
+from forecast import *
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
 bp = Blueprint("ticker", "items", description="Operations on ticker endpoint")
+
+PLOTS_DIR = "static/plots"
+if not os.path.exists(PLOTS_DIR):
+    os.makedirs(PLOTS_DIR)
 
 
 @bp.route("/ticker", methods=["POST"])
@@ -25,11 +31,8 @@ def ticker():
 
         try:
             stock = yf.Ticker(ticker)
-
-            # Get stock info
             stock_info = stock.info
 
-            # Basic validation - hanya cek apakah ada data dasar
             if not stock_info:
                 return jsonify(
                     {
@@ -41,7 +44,6 @@ def ticker():
                     }
                 ), 404
 
-            # Get historical data
             stock_data = stock.history(period="1y")
             if stock_data.empty:
                 return jsonify(
@@ -54,7 +56,7 @@ def ticker():
                     }
                 ), 404
 
-            # Create plot
+            # Create basic price chart
             static_folder = "static"
             if not os.path.exists(static_folder):
                 os.makedirs(static_folder)
@@ -71,15 +73,89 @@ def ticker():
             plt.savefig(image_path)
             plt.close()
 
-            videos = get_youtube_videos(
-                stock_info.get("longName", stock_info.get("shortName", ticker)),
-            )
-            
-            news = get_news(
-                stock_info.get("longName", stock_info.get("shortName", ticker)),
+            # Prepare data for forecasting
+            stock_data_forecast = stock_data.copy()
+            stock_data_forecast = stock_data_forecast.reset_index()
+            stock_data_forecast["Date"] = pd.to_datetime(stock_data_forecast["Date"])
+            stock_data_forecast["Date"] = stock_data_forecast["Date"].dt.tz_localize(
+                None
             )
 
-            # Prepare response with more flexible field handling
+            # Split data while maintaining Date column
+            train_data = stock_data_forecast.iloc[
+                : int(len(stock_data_forecast) * 0.85)
+            ]
+            test_data = stock_data_forecast.iloc[int(len(stock_data_forecast) * 0.85) :]
+            forecast_days = determine_forecast_days("1y")
+
+            # Generate forecasts
+            hw_test_predictions, hw_future_predictions, hw_model = holtwinters_forecast(
+                train_data, test_data, forecast_days, "1y"
+            )
+
+            prophet_test_predictions, prophet_future_predictions, prophet_model = (
+                prophet_forecast(train_data, test_data, forecast_days)
+            )
+
+            # Prepare forecast results
+            last_date = stock_data_forecast["Date"].iloc[-1]
+            future_dates = pd.date_range(
+                start=last_date + timedelta(days=1), periods=forecast_days, freq="D"
+            )
+
+            results_hw = pd.DataFrame(
+                {
+                    "Date": future_dates,
+                    "HoltWinters_Predicted_Close": hw_future_predictions,
+                }
+            )
+
+            results_prophet = pd.DataFrame(
+                {
+                    "Date": future_dates,
+                    "Prophet_Predicted_Close": prophet_future_predictions,
+                }
+            )
+
+            hw_last_row = results_hw.iloc[-1]
+            prophet_last_row = results_prophet.iloc[-1]
+
+            # Generate evaluation metrics
+            hw_evaluation = evaluate_model(test_data, hw_test_predictions)
+            prophet_evaluation = evaluate_model(test_data, prophet_test_predictions)
+
+            # Create forecast plots
+            plot_file_hw = os.path.join(PLOTS_DIR, f"{ticker}_holtwinters.png")
+            plot_file_prophet = os.path.join(PLOTS_DIR, f"{ticker}_prophet.png")
+            plot_predictions(
+                stock_data_forecast,
+                train_data,
+                test_data,
+                hw_test_predictions,
+                results_hw,
+                "Holt-Winters Prediction vs Actual",
+                plot_file_hw,
+            )
+            plot_predictions(
+                stock_data_forecast,
+                train_data,
+                test_data,
+                prophet_test_predictions,
+                results_prophet,
+                "Prophet Prediction vs Actual",
+                plot_file_prophet,
+            )
+
+            # Get videos and news
+            videos = get_youtube_videos(
+                stock_info.get("longName", stock_info.get("shortName", ticker))
+            )
+
+            news = get_news(
+                stock_info.get("longName", stock_info.get("shortName", ticker))
+            )
+
+            # Prepare response with forecasting data
             response = {
                 "status": {
                     "code": 200,
@@ -121,6 +197,36 @@ def ticker():
                     "stock_data": stock_data[["Close"]]
                     .reset_index()
                     .to_dict(orient="records"),
+                    "forecasting": {
+                        "charts": {
+                            "holtwinters_chart": f"{request.host_url}{plot_file_hw}",
+                            "prophet_chart": f"{request.host_url}{plot_file_prophet}",
+                        },
+                        "metrics": {
+                            "holtwinters": {
+                                "mape": float(hw_evaluation["mape"]),
+                                "rmse": float(hw_evaluation["rmse"]),
+                            },
+                            "prophet": {
+                                "mape": float(prophet_evaluation["mape"]),
+                                "rmse": float(prophet_evaluation["rmse"]),
+                            },
+                        },
+                        "last_prediction": {
+                            "holtwinters": {
+                                "date": hw_last_row["Date"].strftime("%Y-%m-%d"),
+                                "predicted_close": float(
+                                    hw_last_row["HoltWinters_Predicted_Close"]
+                                ),
+                            },
+                            "prophet": {
+                                "date": prophet_last_row["Date"].strftime("%Y-%m-%d"),
+                                "predicted_close": float(
+                                    prophet_last_row["Prophet_Predicted_Close"]
+                                ),
+                            },
+                        },
+                    },
                 },
                 "videos": videos,
                 "news": news,
