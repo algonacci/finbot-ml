@@ -88,13 +88,9 @@ def ticker():
             test_data = stock_data_forecast.iloc[int(len(stock_data_forecast) * 0.85) :]
             forecast_days = determine_forecast_days("1y")
 
-            # Generate forecasts
+            # Generate forecasts using Holt-Winters
             hw_test_predictions, hw_future_predictions, hw_model = holtwinters_forecast(
                 train_data, test_data, forecast_days, "1y"
-            )
-
-            prophet_test_predictions, prophet_future_predictions, prophet_model = (
-                prophet_forecast(train_data, test_data, forecast_days)
             )
 
             # Prepare forecast results
@@ -110,23 +106,13 @@ def ticker():
                 }
             )
 
-            results_prophet = pd.DataFrame(
-                {
-                    "Date": future_dates,
-                    "Prophet_Predicted_Close": prophet_future_predictions,
-                }
-            )
-
             hw_last_row = results_hw.iloc[-1]
-            prophet_last_row = results_prophet.iloc[-1]
 
             # Generate evaluation metrics
             hw_evaluation = evaluate_model(test_data, hw_test_predictions)
-            prophet_evaluation = evaluate_model(test_data, prophet_test_predictions)
 
             # Create forecast plots
             plot_file_hw = os.path.join(PLOTS_DIR, f"{ticker}_holtwinters.png")
-            plot_file_prophet = os.path.join(PLOTS_DIR, f"{ticker}_prophet.png")
             plot_predictions(
                 stock_data_forecast,
                 train_data,
@@ -135,15 +121,6 @@ def ticker():
                 results_hw,
                 "Holt-Winters Prediction vs Actual",
                 plot_file_hw,
-            )
-            plot_predictions(
-                stock_data_forecast,
-                train_data,
-                test_data,
-                prophet_test_predictions,
-                results_prophet,
-                "Prophet Prediction vs Actual",
-                plot_file_prophet,
             )
 
             # Get videos and news
@@ -200,16 +177,11 @@ def ticker():
                     "forecasting": {
                         "charts": {
                             "holtwinters_chart": f"{request.host_url}{plot_file_hw}",
-                            "prophet_chart": f"{request.host_url}{plot_file_prophet}",
                         },
                         "metrics": {
                             "holtwinters": {
                                 "mape": float(hw_evaluation["mape"]),
                                 "rmse": float(hw_evaluation["rmse"]),
-                            },
-                            "prophet": {
-                                "mape": float(prophet_evaluation["mape"]),
-                                "rmse": float(prophet_evaluation["rmse"]),
                             },
                         },
                         "last_prediction": {
@@ -217,12 +189,6 @@ def ticker():
                                 "date": hw_last_row["Date"].strftime("%Y-%m-%d"),
                                 "predicted_close": float(
                                     hw_last_row["HoltWinters_Predicted_Close"]
-                                ),
-                            },
-                            "prophet": {
-                                "date": prophet_last_row["Date"].strftime("%Y-%m-%d"),
-                                "predicted_close": float(
-                                    prophet_last_row["Prophet_Predicted_Close"]
                                 ),
                             },
                         },
