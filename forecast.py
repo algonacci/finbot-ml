@@ -95,21 +95,14 @@ def prophet_forecast(train_data, test_data, future_days):
 
     # Create the Prophet model
     model = Prophet(
-        daily_seasonality=True,  # kalau benar-benar butuh harian
-        yearly_seasonality=True,  # yearly masih dinyalakan
-        weekly_seasonality=False,  # mematikan mingguan jika tidak perlu
-        n_changepoints=5,  # default ~25, coba turunkan
-        seasonality_mode="additive",  # gunakan 'additive' daripada 'multiplicative' jika pola data sesuai
+    daily_seasonality=False,     # matikan jika tidak diperlukan
+    weekly_seasonality=False,    # matikan jika tidak diperlukan
+    yearly_seasonality=True,
+    n_changepoints=5,           # default 25, coba turunkan
+    seasonality_mode='additive',
     )
+    model.fit(train_prophet)
 
-    # Lalu saat fit, tambahkan control param
-    model.fit(
-        train_prophet,
-        control={
-            "max_treedepth": 10,  # menurunkan tree depth (default 10, bisa lebih rendah)
-            "adapt_delta": 0.8,  # menyesuaikan threshold adaptasi
-        },
-    )
 
     # Create future dataframe
     future_dates = pd.date_range(
