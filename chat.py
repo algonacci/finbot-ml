@@ -10,6 +10,8 @@ from langchain_core.chat_history import (
 )
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_openai import ChatOpenAI
+# from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.chat_models.sambanova import ChatSambaNovaCloud
 from langchain_helper import classify_template
 
 # from langchain_community.tools import TavilySearchResults
@@ -32,7 +34,14 @@ def get_session_history(session_id: str) -> BaseChatMessageHistory:
 
 
 # Initialize Groq model
-model = ChatOpenAI(model="gpt-4-1106-preview", temperature=0, max_tokens=1000)
+# model = ChatOpenAI(model="gpt-4-1106-preview", temperature=0, max_tokens=1000)
+model = ChatSambaNovaCloud(
+    model="Meta-Llama-3.2-1B-Instruct",
+    max_tokens=4096,
+    temperature=0.7,
+    top_k=1,
+    top_p=0.01,
+)
 
 # Create runnable with message history
 with_message_history = RunnableWithMessageHistory(model, get_session_history)
