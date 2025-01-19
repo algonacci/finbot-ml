@@ -12,6 +12,9 @@ from index import bp as index_bp
 from ticker import bp as ticker_bp
 from chat import bp as chat_bp
 
+from dotenv import load_dotenv
+load_dotenv()
+
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
 os.environ["LANGCHAIN_API_KEY"] = os.getenv("LANGCHAIN_API_KEY")
 
