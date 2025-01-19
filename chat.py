@@ -1,3 +1,4 @@
+import os
 from flask_smorest import Blueprint
 from flask import jsonify, request
 from auth import auth
@@ -41,6 +42,7 @@ model = ChatSambaNovaCloud(
     temperature=0.7,
     top_k=1,
     top_p=0.01,
+    sambanova_api_key=os.getenv("SAMBANOVA_API_KEY"),
 )
 
 # Create runnable with message history
